@@ -1,0 +1,30 @@
+{
+  "name": "synapseai",
+  "version": "1.0.0",
+  "description": "SynapseAI - AI-powered study companion",
+  "main": "server.js",
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "ai",
+    "chatbot",
+    "gemini",
+    "synapseai"
+  ],
+  "author": "SynapseAI",
+  "license": "MIT",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "dotenv": "^17.2.4",
+    "express": "^5.2.1",
+    "groq-sdk": "^0.37.0",
+    "multer": "^2.0.2",
+    "pdf-parse": "^2.4.5"
+  }
+}

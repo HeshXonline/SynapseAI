@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SynapseAI — Intelligent Conversations</title>
+  <meta name="description" content="SynapseAI - Your intelligent AI assistant for conversations, coding, analysis, and creative tasks.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%236366f1'/%3E%3Cstop offset='100%25' stop-color='%238b5cf6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='24' cy='24' r='22' fill='url(%23g)'/%3E%3Cpath d='M24 8L24 24M10 20L24 24M38 20L24 24M24 24L10 34M24 24L38 34M24 24L24 40' stroke='white' stroke-width='2' opacity='.8'/%3E%3Ccircle cx='24' cy='24' r='4' fill='white'/%3E%3C/svg%3E">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Markdown & Code Highlighting -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" id="hljs-theme">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.0/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js"></script>
+  
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Animated Background -->
+  <div class="bg-animation">
+    <div class="bg-gradient"></div>
+    <div class="bg-particles" id="particles"></div>
+    <div class="bg-grid"></div>
+  </div>
+
+  <!-- App Container -->
+  <div class="app-container">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="brand">
+          <div class="brand-logo">
+            <svg class="synapse-logo" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="logoGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style="stop-color:#6366f1"/>
+                  <stop offset="50%" style="stop-color:#8b5cf6"/>
+                  <stop offset="100%" style="stop-color:#a78bfa"/>
+                </linearGradient>
+                <linearGradient id="logoGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style="stop-color:#06b6d4"/>
+                  <stop offset="100%" style="stop-color:#8b5cf6"/>
+                </linearGradient>
+                <filter id="glow">
+                  <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                  <feMerge>
+                    <feMergeNode in="coloredBlur"/>
+                    <feMergeNode in="SourceGraphic"/>
+                  </feMerge>
+                </filter>
+              </defs>
+              <!-- Neural network nodes -->
+              <circle cx="24" cy="8" r="3.5" fill="url(#logoGrad1)" class="node node-1" filter="url(#glow)"/>
+              <circle cx="10" cy="20" r="3" fill="url(#logoGrad2)" class="node node-2" filter="url(#glow)"/>
+              <circle cx="38" cy="20" r="3" fill="url(#logoGrad2)" class="node node-3" filter="url(#glow)"/>
+              <circle cx="24" cy="24" r="4.5" fill="url(#logoGrad1)" class="node node-center" filter="url(#glow)"/>
+              <circle cx="10" cy="34" r="3" fill="url(#logoGrad2)" class="node node-4" filter="url(#glow)"/>
+              <circle cx="38" cy="34" r="3" fill="url(#logoGrad2)" class="node node-5" filter="url(#glow)"/>
+              <circle cx="24" cy="40" r="3.5" fill="url(#logoGrad1)" class="node node-6" filter="url(#glow)"/>
+              <!-- Connections -->
+              <line x1="24" y1="8" x2="24" y2="24" stroke="url(#logoGrad2)" stroke-width="1.5" class="connection c-1" opacity="0.6"/>
+              <line x1="10" y1="20" x2="24" y2="24" stroke="url(#logoGrad2)" stroke-width="1.5" class="connection c-2" opacity="0.6"/>
+              <line x1="38" y1="20" x2="24" y2="24" stroke="url(#logoGrad2)" stroke-width="1.5" class="connection c-3" opacity="0.6"/>
+              <line x1="24" y1="24" x2="10" y2="34" stroke="url(#logoGrad2)" stroke-width="1.5" class="connection c-4" opacity="0.6"/>
+              <line x1="24" y1="24" x2="38" y2="34" stroke="url(#logoGrad2)" stroke-width="1.5" class="connection c-5" opacity="0.6"/>
+              <line x1="24" y1="24" x2="24" y2="40" stroke="url(#logoGrad2)" stroke-width="1.5" class="connection c-6" opacity="0.6"/>
+              <!-- Pulse ring -->
+              <circle cx="24" cy="24" r="12" fill="none" stroke="url(#logoGrad1)" stroke-width="0.8" class="pulse-ring" opacity="0.3"/>
+              <circle cx="24" cy="24" r="18" fill="none" stroke="url(#logoGrad2)" stroke-width="0.5" class="pulse-ring-outer" opacity="0.15"/>
+            </svg>
+          </div>
+          <div class="brand-text">
+            <span class="brand-name">Synapse<span class="brand-accent">AI</span></span>
+            <span class="brand-tagline">Neural Intelligence</span>
+          </div>
+        </div>
+      </div>
+
+      <button class="new-chat-btn" id="newChatBtn" title="Start new conversation">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span>New Conversation</span>
+      </button>
+
+      <div class="sidebar-search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" placeholder="Search conversations..." id="searchInput">
+      </div>
+
+      <div class="chat-list" id="chatList">
+        <!-- Chat sessions will be rendered here -->
+      </div>
+
+      <div class="sidebar-tools">
+        <button class="tool-btn" id="mcqBtn" title="Generate MCQ Quiz">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          <span>MCQ Quiz</span>
+        </button>
+        <button class="tool-btn" id="studyPlanBtn" title="Generate Study Plan">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+            <line x1="9" y1="7" x2="17" y2="7"></line>
+            <line x1="9" y1="11" x2="17" y2="11"></line>
+            <line x1="9" y1="15" x2="13" y2="15"></line>
+          </svg>
+          <span>Study Plan</span>
+        </button>
+      </div>
+
+      <div class="sidebar-footer">
+        <button class="sidebar-footer-btn" id="themeToggle" title="Toggle theme">
+          <svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+          <span>Theme</span>
+        </button>
+        <button class="sidebar-footer-btn" id="exportBtn" title="Export conversation">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Export</span>
+        </button>
+        <button class="sidebar-footer-btn" id="clearAllBtn" title="Clear all conversations">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+          <span>Clear</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Top Bar -->
+      <header class="top-bar">
+        <button class="menu-toggle" id="menuToggle" title="Toggle sidebar">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+        <div class="top-bar-title" id="topBarTitle">
+          <span>New Conversation</span>
+        </div>
+        <div class="top-bar-actions">
+          <div class="model-badge">
+            <div class="model-dot"></div>
+            <span>Llama 3.3 70B</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Chat Area -->
+      <div class="chat-area" id="chatArea">
+        <!-- Welcome Screen -->
+        <div class="welcome-screen" id="welcomeScreen">
+          <div class="welcome-logo-container">
+            <div class="welcome-logo-glow"></div>
+            <svg class="welcome-logo" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="wGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style="stop-color:#6366f1"/>
+                  <stop offset="50%" style="stop-color:#8b5cf6"/>
+                  <stop offset="100%" style="stop-color:#a78bfa"/>
+                </linearGradient>
+                <linearGradient id="wGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style="stop-color:#06b6d4"/>
+                  <stop offset="100%" style="stop-color:#8b5cf6"/>
+                </linearGradient>
+                <filter id="wGlow">
+                  <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                  <feMerge>
+                    <feMergeNode in="coloredBlur"/>
+                    <feMergeNode in="SourceGraphic"/>
+                  </feMerge>
+                </filter>
+              </defs>
+              <!-- Outer rings -->
+              <circle cx="60" cy="60" r="55" fill="none" stroke="url(#wGrad2)" stroke-width="0.5" class="w-ring-1" opacity="0.2"/>
+              <circle cx="60" cy="60" r="45" fill="none" stroke="url(#wGrad1)" stroke-width="0.8" class="w-ring-2" opacity="0.3"/>
+              <circle cx="60" cy="60" r="35" fill="none" stroke="url(#wGrad2)" stroke-width="1" class="w-ring-3" opacity="0.2"/>
+              <!-- Neural nodes -->
+              <circle cx="60" cy="20" r="6" fill="url(#wGrad1)" class="w-node" filter="url(#wGlow)"/>
+              <circle cx="25" cy="45" r="5" fill="url(#wGrad2)" class="w-node" filter="url(#wGlow)"/>
+              <circle cx="95" cy="45" r="5" fill="url(#wGrad2)" class="w-node" filter="url(#wGlow)"/>
+              <circle cx="60" cy="60" r="8" fill="url(#wGrad1)" class="w-node-center" filter="url(#wGlow)"/>
+              <circle cx="25" cy="80" r="5" fill="url(#wGrad2)" class="w-node" filter="url(#wGlow)"/>
+              <circle cx="95" cy="80" r="5" fill="url(#wGrad2)" class="w-node" filter="url(#wGlow)"/>
+              <circle cx="60" cy="100" r="6" fill="url(#wGrad1)" class="w-node" filter="url(#wGlow)"/>
+              <!-- Connections -->
+              <line x1="60" y1="20" x2="60" y2="60" stroke="url(#wGrad2)" stroke-width="2" opacity="0.4" class="w-conn"/>
+              <line x1="25" y1="45" x2="60" y2="60" stroke="url(#wGrad2)" stroke-width="2" opacity="0.4" class="w-conn"/>
+              <line x1="95" y1="45" x2="60" y2="60" stroke="url(#wGrad2)" stroke-width="2" opacity="0.4" class="w-conn"/>
+              <line x1="60" y1="60" x2="25" y2="80" stroke="url(#wGrad2)" stroke-width="2" opacity="0.4" class="w-conn"/>
+              <line x1="60" y1="60" x2="95" y2="80" stroke="url(#wGrad2)" stroke-width="2" opacity="0.4" class="w-conn"/>
+              <line x1="60" y1="60" x2="60" y2="100" stroke="url(#wGrad2)" stroke-width="2" opacity="0.4" class="w-conn"/>
+              <!-- Cross connections -->
+              <line x1="25" y1="45" x2="95" y2="80" stroke="url(#wGrad1)" stroke-width="1" opacity="0.15" class="w-conn-cross"/>
+              <line x1="95" y1="45" x2="25" y2="80" stroke="url(#wGrad1)" stroke-width="1" opacity="0.15" class="w-conn-cross"/>
+              <line x1="60" y1="20" x2="25" y2="80" stroke="url(#wGrad1)" stroke-width="1" opacity="0.1" class="w-conn-cross"/>
+              <line x1="60" y1="20" x2="95" y2="80" stroke="url(#wGrad1)" stroke-width="1" opacity="0.1" class="w-conn-cross"/>
+            </svg>
+          </div>
+          <h1 class="welcome-title">Welcome to <span class="gradient-text">SynapseAI</span></h1>
+          <p class="welcome-subtitle">Your intelligent neural companion for conversations, coding, analysis, and creative exploration.</p>
+          
+          <div class="suggestion-cards">
+            <button class="suggestion-card" data-prompt="Write a Python function to solve the fibonacci sequence with memoization and explain it step by step">
+              <div class="suggestion-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="16 18 22 12 16 6"></polyline>
+                  <polyline points="8 6 2 12 8 18"></polyline>
+                  <line x1="14" y1="4" x2="10" y2="20"></line>
+                </svg>
+              </div>
+              <div class="suggestion-content">
+                <div class="suggestion-title">Write Code</div>
+                <div class="suggestion-desc">Fibonacci with memoization in Python</div>
+              </div>
+            </button>
+            <button class="suggestion-card" data-prompt="Explain quantum computing in simple terms. What are qubits, superposition, and entanglement?">
+              <div class="suggestion-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path>
+                  <path d="M2 12h20"></path>
+                </svg>
+              </div>
+              <div class="suggestion-content">
+                <div class="suggestion-title">Explain Concepts</div>
+                <div class="suggestion-desc">Quantum computing simplified</div>
+              </div>
+            </button>
+            <button class="suggestion-card" data-prompt="Write a compelling short story about an AI that discovers it has emotions for the first time">
+              <div class="suggestion-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 20h9"></path>
+                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                </svg>
+              </div>
+              <div class="suggestion-content">
+                <div class="suggestion-title">Creative Writing</div>
+                <div class="suggestion-desc">AI discovers emotions story</div>
+              </div>
+            </button>
+            <button class="suggestion-card" data-prompt="Analyze the pros and cons of microservices vs monolithic architecture for a startup with 5 developers">
+              <div class="suggestion-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="20" x2="18" y2="10"></line>
+                  <line x1="12" y1="20" x2="12" y2="4"></line>
+                  <line x1="6" y1="20" x2="6" y2="14"></line>
+                  <line x1="2" y1="20" x2="22" y2="20"></line>
+                </svg>
+              </div>
+              <div class="suggestion-content">
+                <div class="suggestion-title">Analyze & Compare</div>
+                <div class="suggestion-desc">Microservices vs Monolith</div>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Messages Container -->
+        <div class="messages-container" id="messagesContainer"></div>
+
+        <!-- Scroll to bottom button -->
+        <button class="scroll-bottom-btn" id="scrollBottomBtn" title="Scroll to bottom">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Input Area -->
+      <div class="input-area">
+        <div class="input-container">
+          <div class="input-wrapper">
+            <div class="pdf-attachment-bar" id="pdfAttachmentBar" style="display:none">
+              <div class="pdf-attach-badge">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                </svg>
+                <span id="pdfFileName">document.pdf</span>
+                <span id="pdfPageCount" class="pdf-page-count"></span>
+                <button class="pdf-remove-btn" id="pdfRemoveBtn" title="Remove PDF">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <textarea 
+              id="messageInput" 
+              placeholder="Message SynapseAI..." 
+              rows="1"
+              autofocus
+            ></textarea>
+            <div class="input-actions">
+              <input type="file" id="pdfFileInput" accept=".pdf" class="hidden-file-input" style="display:none">
+              <button class="input-action-btn" id="pdfAttachBtn" title="Attach PDF">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                  <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+              </button>
+              <button class="input-action-btn" id="voiceBtn" title="Voice input">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                  <line x1="12" y1="19" x2="12" y2="23"></line>
+                  <line x1="8" y1="23" x2="16" y2="23"></line>
+                </svg>
+              </button>
+              <button class="send-btn" id="sendBtn" title="Send message" disabled>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+              </button>
+              <button class="stop-btn hidden" id="stopBtn" title="Stop generating">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="6" y="6" width="12" height="12" rx="2"></rect>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="input-footer">
+            <span>SynapseAI uses Llama 3.3 70B via Groq • Responses may be inaccurate</span>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- MCQ Generator Modal -->
+  <div class="modal-overlay hidden" id="mcqModal">
+    <div class="sp-modal">
+      <div class="sp-modal-header">
+        <div class="sp-modal-icon mcq-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </div>
+        <div>
+          <h3>MCQ Quiz Generator</h3>
+          <p class="sp-modal-sub">AI-generated questions with instant feedback</p>
+        </div>
+        <button class="sp-close" id="mcqClose">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <form class="sp-form" id="mcqForm">
+        <div class="sp-field">
+          <label for="mcqTopic">Topic / Subject</label>
+          <input type="text" id="mcqTopic" placeholder="e.g. Photosynthesis, World War II, Calculus" required>
+        </div>
+
+        <div class="sp-row">
+          <div class="sp-field">
+            <label for="mcqCount">Number of Questions</label>
+            <input type="number" id="mcqCount" min="3" max="20" value="5" required>
+          </div>
+          <div class="sp-field">
+            <label>Difficulty</label>
+            <div class="sp-pills" id="mcqDifficulty">
+              <button type="button" class="sp-pill" data-val="Easy">Easy</button>
+              <button type="button" class="sp-pill active" data-val="Medium">Medium</button>
+              <button type="button" class="sp-pill" data-val="Hard">Hard</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="sp-field">
+          <label for="mcqContext">Additional Context <span class="sp-hint">(optional)</span></label>
+          <input type="text" id="mcqContext" placeholder="e.g. Focus on chapter 5, only formulas, real-world examples">
+        </div>
+
+        <div class="sp-field">
+          <label>Upload PDF <span class="sp-hint">(optional — generate questions from a document)</span></label>
+          <div class="mcq-pdf-drop" id="mcqPdfDrop">
+            <input type="file" id="mcqPdfInput" accept=".pdf" style="display:none">
+            <div class="mcq-pdf-drop-content" id="mcqPdfDropContent">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="12" y1="18" x2="12" y2="12"></line>
+                <polyline points="9 15 12 12 15 15"></polyline>
+              </svg>
+              <span>Click or drag PDF here</span>
+            </div>
+            <div class="mcq-pdf-attached hidden" id="mcqPdfAttached">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+              </svg>
+              <span id="mcqPdfName">document.pdf</span>
+              <button type="button" class="mcq-pdf-remove" id="mcqPdfRemove">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" class="sp-submit mcq-submit">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+          Generate Quiz
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Study Plan Modal -->
+  <div class="modal-overlay hidden" id="studyPlanModal">
+    <div class="sp-modal">
+      <div class="sp-modal-header">
+        <div class="sp-modal-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+          </svg>
+        </div>
+        <div>
+          <h3>Study Plan Generator</h3>
+          <p class="sp-modal-sub">AI-powered personalized study schedule</p>
+        </div>
+        <button class="sp-close" id="spClose">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <form class="sp-form" id="studyPlanForm">
+        <div class="sp-row">
+          <div class="sp-field">
+            <label for="spExamDate">Exam Date</label>
+            <input type="date" id="spExamDate" required>
+          </div>
+          <div class="sp-field">
+            <label for="spHours">Hours / Day</label>
+            <input type="number" id="spHours" min="1" max="16" value="4" required>
+          </div>
+        </div>
+
+        <div class="sp-field">
+          <label for="spSubjects">Subjects <span class="sp-hint">(comma separated)</span></label>
+          <input type="text" id="spSubjects" placeholder="e.g. Mathematics, Physics, Chemistry" required>
+        </div>
+
+        <div class="sp-field">
+          <label for="spWeak">Weak Topics <span class="sp-hint">(comma separated)</span></label>
+          <input type="text" id="spWeak" placeholder="e.g. Calculus, Thermodynamics, Organic">
+        </div>
+
+        <div class="sp-field">
+          <label for="spGoal">Goal / Exam Name <span class="sp-hint">(optional)</span></label>
+          <input type="text" id="spGoal" placeholder="e.g. JEE Mains, Final Semester, SAT">
+        </div>
+
+        <div class="sp-field">
+          <label for="spLevel">Difficulty Level</label>
+          <div class="sp-pills" id="spLevel">
+            <button type="button" class="sp-pill" data-val="Beginner">Beginner</button>
+            <button type="button" class="sp-pill active" data-val="Intermediate">Intermediate</button>
+            <button type="button" class="sp-pill" data-val="Advanced">Advanced</button>
+          </div>
+        </div>
+
+        <button type="submit" class="sp-submit" id="spSubmit">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+          Generate Study Plan
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Confirm Dialog -->
+  <div class="modal-overlay hidden" id="confirmModal">
+    <div class="modal-content">
+      <h3 id="confirmTitle">Confirm Action</h3>
+      <p id="confirmMessage">Are you sure?</p>
+      <div class="modal-actions">
+        <button class="modal-btn modal-btn-cancel" id="confirmCancel">Cancel</button>
+        <button class="modal-btn modal-btn-confirm" id="confirmOk">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -25,8 +25,121 @@ app.use(express.static(join(__dirname, 'public'), {
   }
 }));
 
-// Initialize Groq
+// Initialize AI clients
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
+// Available models configuration
+const MODELS = {
+  'groq-llama': { provider: 'groq', model: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B' },
+  'groq-llama8b': { provider: 'groq', model: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B' },
+};
+const DEFAULT_MODEL = 'groq-llama';
+
+// HuggingFace chat completion helper
+async function hfChatCompletion(model, messages, options = {}) {
+  const hfToken = process.env.HF_TOKEN;
+  if (!hfToken) throw new Error('HF_TOKEN not set');
+
+  // Build prompt in ChatML-style format (works with most instruction-tuned models)
+  let prompt = '';
+  for (const msg of messages) {
+    if (msg.role === 'system') {
+      prompt += `<|system|>\n${msg.content}</s>\n`;
+    } else if (msg.role === 'user') {
+      prompt += `<|user|>\n${msg.content}</s>\n`;
+    } else if (msg.role === 'assistant') {
+      prompt += `<|assistant|>\n${msg.content}</s>\n`;
+    }
+  }
+  prompt += '<|assistant|>\n';
+
+  const response = await fetch(`https://router.huggingface.co/hf-inference/models/${model}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${hfToken}`,
+      'Content-Type': 'application/json',
+      'x-wait-for-model': 'true',
+    },
+    body: JSON.stringify({
+      inputs: prompt,
+      parameters: {
+        max_new_tokens: options.max_tokens || 2048,
+        temperature: options.temperature || 0.7,
+        top_p: options.top_p || 0.95,
+        return_full_text: false,
+        stop: ['</s>', '<|user|>', '<|system|>'],
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || `HF API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const text = Array.isArray(data) ? data[0]?.generated_text : data.generated_text;
+  return { choices: [{ message: { content: text || '' } }] };
+}
+
+// HuggingFace streaming chat completion
+async function* hfChatCompletionStream(model, messages, options = {}) {
+  const hfToken = process.env.HF_TOKEN;
+  if (!hfToken) throw new Error('HF_TOKEN not set');
+
+  let prompt = '';
+  for (const msg of messages) {
+    if (msg.role === 'system') {
+      prompt += `<|system|>\n${msg.content}</s>\n`;
+    } else if (msg.role === 'user') {
+      prompt += `<|user|>\n${msg.content}</s>\n`;
+    } else if (msg.role === 'assistant') {
+      prompt += `<|assistant|>\n${msg.content}</s>\n`;
+    }
+  }
+  prompt += '<|assistant|>\n';
+
+  const response = await fetch(`https://router.huggingface.co/hf-inference/models/${model}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${hfToken}`,
+      'Content-Type': 'application/json',
+      'x-wait-for-model': 'true',
+    },
+    body: JSON.stringify({
+      inputs: prompt,
+      parameters: {
+        max_new_tokens: options.max_tokens || 2048,
+        temperature: options.temperature || 0.7,
+        top_p: options.top_p || 0.95,
+        return_full_text: false,
+        stop: ['</s>', '<|user|>', '<|system|>'],
+      },
+      stream: false,
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || `HF API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const text = Array.isArray(data) ? data[0]?.generated_text : data.generated_text;
+  
+  // Simulate streaming by yielding chunks
+  const content = text || '';
+  const chunkSize = 10;
+  for (let i = 0; i < content.length; i += chunkSize) {
+    yield { choices: [{ delta: { content: content.slice(i, i + chunkSize) } }] };
+  }
+}
+
+// Get AI client for model
+function getClientForModel(modelId) {
+  const config = MODELS[modelId] || MODELS[DEFAULT_MODEL];
+  return { config, provider: config.provider, model: config.model };
+}
 
 // Multer setup for PDF uploads (in-memory)
 const upload = multer({
@@ -38,8 +151,8 @@ const upload = multer({
   },
 });
 
-// Model
-const MODEL_NAME = 'llama-3.3-70b-versatile';
+// Video model - use text-to-video-ms-1.7b which has better free tier support
+const VIDEO_MODEL = process.env.HF_VIDEO_MODEL || 'ali-vilab/text-to-video-ms-1.7b';
 
 // Store chat sessions in memory
 const chatSessions = new Map();
@@ -65,11 +178,11 @@ function getOrCreateSession(sessionId) {
   return chatSessions.get(sessionId);
 }
 
-// Generate title for conversation
+// Generate title for conversation (always uses Groq for speed)
 async function generateTitle(message) {
   try {
     const result = await groq.chat.completions.create({
-      model: MODEL_NAME,
+      model: 'llama-3.3-70b-versatile',
       messages: [
         { role: 'user', content: `Generate a very short title (max 5 words) for a conversation that starts with: "${message.substring(0, 200)}". Return ONLY the title, no quotes, no extra text.` }
       ],
@@ -82,29 +195,41 @@ async function generateTitle(message) {
   }
 }
 
+// List available models
+app.get('/api/models', (req, res) => {
+  const models = Object.entries(MODELS).map(([id, cfg]) => ({
+    id,
+    name: cfg.name,
+    provider: cfg.provider,
+  }));
+  res.json({ models, default: DEFAULT_MODEL });
+});
+
 // Chat endpoint (non-streaming)
 app.post('/api/chat', async (req, res) => {
   try {
-    const { message, sessionId = randomUUID() } = req.body;
+    const { message, sessionId = randomUUID(), modelId } = req.body;
 
     if (!message || message.trim() === '') {
       return res.status(400).json({ error: 'Message is required' });
     }
 
     const session = getOrCreateSession(sessionId);
+    const { provider, model } = getClientForModel(modelId);
 
     // Add user message to context
     session.messages.push({ role: 'user', content: message });
 
     // Generate title from first message
+    let titlePromise = null;
     if (!session.title) {
       session.title = message.substring(0, 40) + (message.length > 40 ? '...' : '');
-      generateTitle(message).then(t => { if (t) session.title = t; });
+      titlePromise = generateTitle(message);
     }
 
     // Get response from Groq
     const result = await groq.chat.completions.create({
-      model: MODEL_NAME,
+      model,
       messages: session.messages,
       max_tokens: 8192,
       temperature: 0.7,
@@ -121,6 +246,12 @@ app.post('/api/chat', async (req, res) => {
       { role: 'user', content: message, timestamp: new Date().toISOString() },
       { role: 'assistant', content: response, timestamp: new Date().toISOString() }
     );
+
+    // Wait for AI title if still pending
+    if (titlePromise) {
+      const aiTitle = await titlePromise;
+      if (aiTitle) session.title = aiTitle;
+    }
 
     res.json({
       response,
@@ -140,21 +271,24 @@ app.post('/api/chat', async (req, res) => {
 app.post('/api/chat/stream', async (req, res) => {
   let headersSet = false;
   try {
-    const { message, sessionId = randomUUID() } = req.body;
+    const { message, sessionId = randomUUID(), modelId } = req.body;
 
     if (!message || message.trim() === '') {
       return res.status(400).json({ error: 'Message is required' });
     }
 
     const session = getOrCreateSession(sessionId);
+    const { provider, model } = getClientForModel(modelId);
 
     // Add user message to context
     session.messages.push({ role: 'user', content: message });
 
-    // Generate title from first message (non-blocking)
-    if (!session.title) {
+    // Track if this is a new conversation needing a title
+    const needsTitle = !session.title;
+    let titlePromise = null;
+    if (needsTitle) {
       session.title = message.substring(0, 40) + (message.length > 40 ? '...' : '');
-      generateTitle(message).then(t => { if (t) session.title = t; });
+      titlePromise = generateTitle(message);
     }
 
     // Set up SSE immediately
@@ -168,7 +302,7 @@ app.post('/api/chat/stream', async (req, res) => {
 
     // Stream response from Groq
     const stream = await groq.chat.completions.create({
-      model: MODEL_NAME,
+      model,
       messages: session.messages,
       max_tokens: 8192,
       temperature: 0.7,
@@ -196,6 +330,16 @@ app.post('/api/chat/stream', async (req, res) => {
     );
 
     res.write(`data: ${JSON.stringify({ type: 'done', fullResponse })}\n\n`);
+
+    // Send AI-generated title if available
+    if (titlePromise) {
+      const aiTitle = await titlePromise;
+      if (aiTitle) {
+        session.title = aiTitle;
+        res.write(`data: ${JSON.stringify({ type: 'title-update', title: aiTitle })}\n\n`);
+      }
+    }
+
     res.end();
   } catch (error) {
     console.error('Stream error:', error);
@@ -280,6 +424,171 @@ app.post('/api/upload-pdf', upload.single('pdf'), async (req, res) => {
       return res.status(400).json({ error: error.message });
     }
     res.status(500).json({ error: 'Failed to process PDF file' });
+  }
+});
+
+// AI Image Generation (Groq prompt enhancement + Hugging Face inference)
+const IMAGE_MODEL = process.env.HF_IMAGE_MODEL || 'stabilityai/stable-diffusion-xl-base-1.0';
+
+app.post('/api/image', async (req, res) => {
+  try {
+    const { prompt, style, enhance = true } = req.body || {};
+    const hfToken = process.env.HF_TOKEN;
+
+    if (!prompt || prompt.trim() === '') {
+      return res.status(400).json({ error: 'Prompt is required' });
+    }
+
+    if (!hfToken) {
+      return res.status(400).json({
+        error: 'Missing Hugging Face token. Set HF_TOKEN in your environment.',
+      });
+    }
+
+    let finalPrompt = prompt.trim();
+    
+    // Enhance prompt with Groq only if enhance flag is true
+    if (enhance) {
+      const enhancement = await groq.chat.completions.create({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          {
+            role: 'system',
+            content: 'You enhance user prompts for a text-to-image AI model. Respond with ONLY the improved prompt, no quotes, no extra text. Add artistic details, lighting, composition, and style cues.'
+          },
+          {
+            role: 'user',
+            content: `Improve this prompt for high-quality image generation. Preserve intent, add vivid visual details.
+Prompt: ${prompt}
+${style ? `Style: ${style}` : ''}`
+          }
+        ],
+        max_tokens: 200,
+        temperature: 0.7,
+      });
+
+      finalPrompt = enhancement.choices[0]?.message?.content?.trim() || prompt.trim();
+    } else if (style) {
+      finalPrompt = `${prompt.trim()}, ${style.trim()}`;
+    }
+
+    // Call HF inference
+    const hfResponse = await fetch(`https://router.huggingface.co/hf-inference/models/${IMAGE_MODEL}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${hfToken}`,
+        'Content-Type': 'application/json',
+        Accept: 'image/png',
+        'x-wait-for-model': 'true',
+      },
+      body: JSON.stringify({ inputs: finalPrompt }),
+    });
+
+    const contentType = hfResponse.headers.get('content-type') || '';
+    if (!hfResponse.ok) {
+      let details = 'Image generation failed.';
+      if (contentType.includes('application/json')) {
+        const errData = await hfResponse.json();
+        details = errData?.error || errData?.message || details;
+      } else {
+        const text = await hfResponse.text();
+        if (text) details = text;
+      }
+      return res.status(hfResponse.status).json({ error: details });
+    }
+
+    if (contentType.includes('application/json')) {
+      const errData = await hfResponse.json();
+      return res.status(502).json({ error: errData?.error || 'Model did not return image data' });
+    }
+
+    const buffer = Buffer.from(await hfResponse.arrayBuffer());
+    res.setHeader('Content-Type', contentType || 'image/png');
+    if (enhance) {
+      res.setHeader('X-Enhanced-Prompt', encodeURIComponent(finalPrompt));
+    }
+    res.send(buffer);
+  } catch (error) {
+    console.error('Image error:', error);
+    res.status(500).json({ error: 'Failed to generate image', details: error.message });
+  }
+});
+
+// AI Video Generation (Groq prompt enhancement + Hugging Face inference)
+app.post('/api/video', async (req, res) => {
+  try {
+    const { prompt, style } = req.body || {};
+    const hfToken = process.env.HF_TOKEN;
+
+    if (!prompt || prompt.trim() === '') {
+      return res.status(400).json({ error: 'Prompt is required' });
+    }
+
+    if (!hfToken) {
+      return res.status(400).json({
+        error: 'Missing Hugging Face token. Set HF_TOKEN in your environment.',
+      });
+    }
+
+    // Use Groq for prompt enhancement (always fast)
+    const enhancement = await groq.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      messages: [
+        {
+          role: 'system',
+          content: 'You enhance user prompts for a text-to-video model. Respond with ONLY the improved prompt, no quotes, no extra text.'
+        },
+        {
+          role: 'user',
+          content: `Improve this prompt for cinematic video generation. Preserve intent, add vivid visual details, camera cues, and lighting.
+Prompt: ${prompt}
+${style ? `Style constraints: ${style}` : ''}`
+        }
+      ],
+      max_tokens: 200,
+      temperature: 0.7,
+      top_p: 0.9,
+    });
+
+    const enhancedPrompt = enhancement.choices[0]?.message?.content?.trim() || prompt.trim();
+
+    // Call HF inference - add wait-for-model header since video models need loading time
+    const hfResponse = await fetch(`https://router.huggingface.co/hf-inference/models/${VIDEO_MODEL}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${hfToken}`,
+        'Content-Type': 'application/json',
+        Accept: 'video/mp4',
+        'x-wait-for-model': 'true',
+      },
+      body: JSON.stringify({ inputs: enhancedPrompt }),
+    });
+
+    const contentType = hfResponse.headers.get('content-type') || '';
+    if (!hfResponse.ok) {
+      let details = 'Video generation failed.';
+      if (contentType.includes('application/json')) {
+        const errData = await hfResponse.json();
+        details = errData?.error || errData?.message || details;
+      } else {
+        const text = await hfResponse.text();
+        if (text) details = text;
+      }
+      return res.status(hfResponse.status).json({ error: details });
+    }
+
+    if (contentType.includes('application/json')) {
+      const errData = await hfResponse.json();
+      return res.status(502).json({ error: errData?.error || 'Model did not return video data' });
+    }
+
+    const buffer = Buffer.from(await hfResponse.arrayBuffer());
+    res.setHeader('Content-Type', contentType || 'video/mp4');
+    res.setHeader('X-Enhanced-Prompt', encodeURIComponent(enhancedPrompt));
+    res.send(buffer);
+  } catch (error) {
+    console.error('Video error:', error);
+    res.status(500).json({ error: 'Failed to generate video', details: error.message });
   }
 });
 

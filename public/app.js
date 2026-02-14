@@ -16,10 +16,15 @@ class SynapseAI {
     this.attachedPdfName = null;  // PDF file name for chat
     this.mcqPdfText = null;       // PDF text for MCQ
     this.mcqPdfName = null;       // PDF file name for MCQ
+    this.videoObjectUrl = null;   // Video preview URL
+    this.imageObjectUrl = null;   // Image preview URL
+    this.currentImagePrompt = null; // Prompt used for current image
+    this.selectedModel = 'groq-llama'; // Current AI model
 
     // DOM Elements
     this.elements = {
       sidebar: document.getElementById('sidebar'),
+      sidebarOverlay: document.getElementById('sidebarOverlay'),
       menuToggle: document.getElementById('menuToggle'),
       newChatBtn: document.getElementById('newChatBtn'),
       searchInput: document.getElementById('searchInput'),
@@ -28,6 +33,11 @@ class SynapseAI {
       exportBtn: document.getElementById('exportBtn'),
       clearAllBtn: document.getElementById('clearAllBtn'),
       topBarTitle: document.getElementById('topBarTitle'),
+      // Model Selector
+      modelSelector: document.getElementById('modelSelector'),
+      modelSelectorBtn: document.getElementById('modelSelectorBtn'),
+      modelName: document.getElementById('modelName'),
+      modelDropdown: document.getElementById('modelDropdown'),
       chatArea: document.getElementById('chatArea'),
       welcomeScreen: document.getElementById('welcomeScreen'),
       messagesContainer: document.getElementById('messagesContainer'),
@@ -55,6 +65,28 @@ class SynapseAI {
       spGoal: document.getElementById('spGoal'),
       spLevel: document.getElementById('spLevel'),
       spSubmit: document.getElementById('spSubmit'),
+      // Video Generator
+      videoBtn: document.getElementById('videoBtn'),
+      videoModal: document.getElementById('videoModal'),
+      videoForm: document.getElementById('videoForm'),
+      videoClose: document.getElementById('videoClose'),
+      videoPrompt: document.getElementById('videoPrompt'),
+      videoStyle: document.getElementById('videoStyle'),
+      videoSubmit: document.getElementById('videoSubmit'),
+      videoResult: document.getElementById('videoResult'),
+      videoStatus: document.getElementById('videoStatus'),
+      videoEnhanced: document.getElementById('videoEnhanced'),
+      videoPreview: document.getElementById('videoPreview'),
+      videoDownload: document.getElementById('videoDownload'),
+      // Image Generator
+      imageBtn: document.getElementById('imageBtn'),
+      imageModal: document.getElementById('imageModal'),
+      imageForm: document.getElementById('imageForm'),
+      imageClose: document.getElementById('imageClose'),
+      imagePrompt: document.getElementById('imagePrompt'),
+      imageStyle: document.getElementById('imageStyle'),
+      imageSubmit: document.getElementById('imageSubmit'),
+      imageEnhancePrompt: document.getElementById('imageEnhancePrompt'),
       // MCQ
       mcqBtn: document.getElementById('mcqBtn'),
       mcqModal: document.getElementById('mcqModal'),
@@ -89,6 +121,7 @@ class SynapseAI {
     this.setupMarkdown();
     this.setupParticles();
     this.loadTheme();
+    this.loadSelectedModel();
     this.loadSessions();
     this.setupVoiceRecognition();
     this.setupKeyboardShortcuts();
@@ -99,11 +132,26 @@ class SynapseAI {
   setupEventListeners() {
     // Sidebar
     this.elements.menuToggle.addEventListener('click', () => this.toggleSidebar());
-    this.elements.newChatBtn.addEventListener('click', () => this.newChat());
+    this.elements.sidebarOverlay.addEventListener('click', () => this.closeSidebar());
+    this.elements.newChatBtn.addEventListener('click', () => {
+      this.newChat();
+      if (window.innerWidth <= 768) this.closeSidebar();
+    });
     this.elements.searchInput.addEventListener('input', (e) => this.filterChats(e.target.value));
     
     // Theme
     this.elements.themeToggle.addEventListener('click', () => this.toggleTheme());
+
+    // Model Selector
+    this.elements.modelSelectorBtn.addEventListener('click', () => this.toggleModelDropdown());
+    this.elements.modelDropdown.querySelectorAll('.model-option').forEach(opt => {
+      opt.addEventListener('click', () => this.selectModel(opt.dataset.model));
+    });
+    document.addEventListener('click', (e) => {
+      if (!this.elements.modelSelector.contains(e.target)) {
+        this.closeModelDropdown();
+      }
+    });
     
     // Export
     this.elements.exportBtn.addEventListener('click', () => this.exportChat());
@@ -177,6 +225,28 @@ class SynapseAI {
     });
     // Set min date to today
     this.elements.spExamDate.min = new Date().toISOString().split('T')[0];
+
+    // Image Generator
+    this.elements.imageBtn.addEventListener('click', () => this.openImageGenerator());
+    this.elements.imageClose.addEventListener('click', () => this.closeImageGenerator());
+    this.elements.imageModal.addEventListener('click', (e) => {
+      if (e.target === this.elements.imageModal) this.closeImageGenerator();
+    });
+    this.elements.imageForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.generateImage();
+    });
+
+    // Video Generator
+    this.elements.videoBtn.addEventListener('click', () => this.openVideoGenerator());
+    this.elements.videoClose.addEventListener('click', () => this.closeVideoGenerator());
+    this.elements.videoModal.addEventListener('click', (e) => {
+      if (e.target === this.elements.videoModal) this.closeVideoGenerator();
+    });
+    this.elements.videoForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.generateVideo();
+    });
 
     // MCQ Generator
     this.elements.mcqBtn.addEventListener('click', () => this.openMCQ());
@@ -342,9 +412,56 @@ class SynapseAI {
       : 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css';
   }
 
+  /* ── Model Selector ── */
+  toggleModelDropdown() {
+    this.elements.modelSelector.classList.toggle('open');
+    this.elements.modelDropdown.classList.toggle('hidden');
+  }
+
+  closeModelDropdown() {
+    this.elements.modelSelector.classList.remove('open');
+    this.elements.modelDropdown.classList.add('hidden');
+  }
+
+  selectModel(modelId, showToast = true) {
+    this.selectedModel = modelId;
+    // Update UI
+    const opt = this.elements.modelDropdown.querySelector(`[data-model="${modelId}"]`);
+    if (opt) {
+      this.elements.modelDropdown.querySelectorAll('.model-option').forEach(o => o.classList.remove('active'));
+      opt.classList.add('active');
+      this.elements.modelName.textContent = opt.querySelector('.model-option-name').textContent;
+    }
+    this.closeModelDropdown();
+    localStorage.setItem('synapse-model', modelId);
+    if (showToast) {
+      this.showToast(`Switched to ${this.elements.modelName.textContent}`, 'info');
+    }
+  }
+
+  loadSelectedModel() {
+    const saved = localStorage.getItem('synapse-model');
+    if (saved && this.elements.modelDropdown.querySelector(`[data-model="${saved}"]`)) {
+      this.selectModel(saved, false);
+    }
+  }
+
   /* ── Sidebar ── */
   toggleSidebar() {
-    this.elements.sidebar.classList.toggle('collapsed');
+    const isCollapsed = this.elements.sidebar.classList.toggle('collapsed');
+    // Handle overlay on mobile
+    if (window.innerWidth <= 768) {
+      if (isCollapsed) {
+        this.elements.sidebarOverlay.classList.remove('active');
+      } else {
+        this.elements.sidebarOverlay.classList.add('active');
+      }
+    }
+  }
+
+  closeSidebar() {
+    this.elements.sidebar.classList.add('collapsed');
+    this.elements.sidebarOverlay.classList.remove('active');
   }
 
   /* ── Sessions Management ── */
@@ -477,6 +594,7 @@ class SynapseAI {
       item.addEventListener('click', (e) => {
         if (e.target.closest('.chat-delete')) return;
         this.loadSession(id);
+        if (window.innerWidth <= 768) this.closeSidebar();
       });
 
       item.querySelector('.chat-delete').addEventListener('click', () => {
@@ -542,7 +660,8 @@ class SynapseAI {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           message: actualMessage, 
-          sessionId: this.currentSessionId 
+          sessionId: this.currentSessionId,
+          modelId: this.selectedModel
         }),
         signal: this.abortController.signal,
       });
@@ -624,6 +743,8 @@ class SynapseAI {
                   contentEl.innerHTML = this.renderMarkdown(fullResponse);
                   this.saveMessageToSession('assistant', fullResponse);
                 }
+              } else if (data.type === 'title-update') {
+                this.updateSessionTitle(data.title);
               } else if (data.type === 'error') {
                 throw new Error(data.error);
               }
@@ -1196,6 +1317,282 @@ Rules:
       this.elements.sendBtn.classList.remove('hidden');
       this.elements.stopBtn.classList.add('hidden');
       this.scrollToBottom();
+    }
+  }
+
+  /* ── Image Generator ── */
+  openImageGenerator() {
+    this.elements.imagePrompt.value = '';
+    this.elements.imageStyle.value = '';
+    this.elements.imageModal.classList.remove('hidden');
+  }
+
+  closeImageGenerator() {
+    this.elements.imageModal.classList.add('hidden');
+  }
+
+  async generateImage() {
+    const prompt = this.elements.imagePrompt.value.trim();
+    const style = this.elements.imageStyle.value.trim();
+    const enhance = this.elements.imageEnhancePrompt.checked;
+
+    if (!prompt) {
+      this.showToast('Please enter an image prompt', 'error');
+      return;
+    }
+
+    // Close modal immediately
+    this.closeImageGenerator();
+    
+    // Start new chat and prepare UI
+    this.currentSessionId = null;
+    this.elements.messagesContainer.innerHTML = '';
+    this.elements.welcomeScreen.classList.add('hidden');
+    this.elements.messagesContainer.classList.add('active');
+    this.elements.topBarTitle.querySelector('span').textContent = 'Image Generation';
+    this.currentImagePrompt = prompt;
+
+    // Add user message
+    const userMsg = style ? `Generate image: "${prompt}" (Style: ${style})` : `Generate image: "${prompt}"`;
+    this.appendMessage('user', userMsg);
+    this.saveMessageToSession('user', userMsg);
+
+    // Show generating animation
+    const loadingEl = this.showImageGeneratingIndicator(enhance);
+
+    try {
+      const response = await fetch('/api/image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, style, enhance }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || err.details || 'Image generation failed');
+      }
+
+      // Get enhanced prompt from header
+      let enhancedPrompt = prompt;
+      const enhancedHeader = response.headers.get('x-enhanced-prompt');
+      if (enhancedHeader) {
+        enhancedPrompt = decodeURIComponent(enhancedHeader);
+      }
+
+      const blob = await response.blob();
+      if (this.imageObjectUrl) {
+        URL.revokeObjectURL(this.imageObjectUrl);
+      }
+      this.imageObjectUrl = URL.createObjectURL(blob);
+
+      // Remove loading indicator and show image
+      loadingEl.remove();
+      this.appendImageMessage(this.imageObjectUrl, prompt, enhance ? enhancedPrompt : null);
+      this.saveMessageToSession('assistant', `[Generated Image]\nPrompt: ${prompt}${enhance ? `\nEnhanced: ${enhancedPrompt}` : ''}\n\n*You can ask me to edit this image by describing changes.*`);
+
+    } catch (error) {
+      loadingEl.remove();
+      this.appendMessage('assistant', `**Image Generation Failed**\n\n${error.message}\n\nPlease try again with a different prompt.`);
+      this.showToast(error.message || 'Failed to generate image', 'error');
+    }
+  }
+
+  showImageGeneratingIndicator(enhance = true) {
+    const div = document.createElement('div');
+    div.className = 'message message-assistant image-generating';
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const subtitle = enhance 
+      ? 'Enhancing prompt with AI and creating artwork' 
+      : 'Creating your artwork';
+
+    div.innerHTML = `
+      <div class="message-header">
+        <div class="message-avatar message-avatar-ai">
+          <div class="ai-avatar-anim"><svg class="ai-orb" viewBox="0 0 36 36"><circle cx="18" cy="18" r="6" fill="url(#aiOrbGrad)" class="ai-orb-core"/><circle cx="18" cy="18" r="11" fill="none" stroke="url(#aiOrbGrad)" stroke-width="1.2" class="ai-orb-ring1" opacity="0.5"/><circle cx="18" cy="18" r="16" fill="none" stroke="url(#aiOrbGrad)" stroke-width="0.8" class="ai-orb-ring2" opacity="0.25"/><defs><linearGradient id="aiOrbGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#818cf8"/><stop offset="100%" stop-color="#c084fc"/></linearGradient></defs></svg></div>
+        </div>
+        <span class="message-name">SynapseAI</span>
+        <span class="message-time">${timeStr}</span>
+      </div>
+      <div class="message-content">
+        <div class="image-generating-container">
+          <div class="image-generating-animation">
+            <div class="image-gen-circle"></div>
+            <div class="image-gen-circle"></div>
+            <div class="image-gen-circle"></div>
+            <svg class="image-gen-icon" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <circle cx="8.5" cy="8.5" r="1.5"></circle>
+              <polyline points="21 15 16 10 5 21"></polyline>
+            </svg>
+          </div>
+          <div class="image-generating-text">
+            <span class="image-gen-title">Generating your image...</span>
+            <span class="image-gen-subtitle">${subtitle}</span>
+          </div>
+        </div>
+      </div>`;
+
+    this.elements.messagesContainer.appendChild(div);
+    this.scrollToBottom();
+    return div;
+  }
+
+  appendImageMessage(imageUrl, originalPrompt, enhancedPrompt) {
+    const div = document.createElement('div');
+    div.className = 'message message-assistant';
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    const enhancedHtml = enhancedPrompt 
+      ? `<p class="gen-img-enhanced"><strong>Enhanced:</strong> ${this.escapeHtml(enhancedPrompt)}</p>`
+      : '';
+
+    div.innerHTML = `
+      <div class="message-header">
+        <div class="message-avatar message-avatar-ai">
+          <div class="ai-avatar-anim"><svg class="ai-orb" viewBox="0 0 36 36"><circle cx="18" cy="18" r="6" fill="url(#aiOrbGrad)" class="ai-orb-core"/><circle cx="18" cy="18" r="11" fill="none" stroke="url(#aiOrbGrad)" stroke-width="1.2" class="ai-orb-ring1" opacity="0.5"/><circle cx="18" cy="18" r="16" fill="none" stroke="url(#aiOrbGrad)" stroke-width="0.8" class="ai-orb-ring2" opacity="0.25"/><defs><linearGradient id="aiOrbGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#818cf8"/><stop offset="100%" stop-color="#c084fc"/></linearGradient></defs></svg></div>
+        </div>
+        <span class="message-name">SynapseAI</span>
+        <span class="message-time">${timeStr}</span>
+      </div>
+      <div class="message-content">
+        <div class="generated-image-container">
+          <img src="${imageUrl}" alt="Generated image" class="generated-image-preview" />
+          <div class="generated-image-caption">
+            <strong>Generated Image</strong>
+            <p class="gen-img-prompt"><strong>Your prompt:</strong> ${this.escapeHtml(originalPrompt)}</p>
+            ${enhancedHtml}
+          </div>
+          <div class="generated-image-actions">
+            <a href="${imageUrl}" download="synapseai-image.png" class="img-action-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              Download
+            </a>
+            <button class="img-action-btn" onclick="window.synapseAI.regenerateImage()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+              </svg>
+              Regenerate
+            </button>
+          </div>
+        </div>
+        <p class="image-edit-hint"><em>Want changes? Just describe them (e.g., "make the sky more colorful") and click regenerate, or create a new image.</em></p>
+      </div>`;
+
+    this.elements.messagesContainer.appendChild(div);
+    this.scrollToBottom();
+  }
+
+  regenerateImage() {
+    if (!this.currentImagePrompt) {
+      this.showToast('No image prompt available to regenerate', 'error');
+      return;
+    }
+    // Reopen image generator with previous prompt
+    this.openImageGenerator();
+    this.elements.imagePrompt.value = this.currentImagePrompt;
+    this.showToast('Modify the prompt if needed, then click Generate', 'info');
+  }
+
+  /* ── Video Generator ── */
+  openVideoGenerator() {
+    this.resetVideoResult();
+    this.elements.videoModal.classList.remove('hidden');
+  }
+
+  closeVideoGenerator() {
+    this.resetVideoResult();
+    this.elements.videoModal.classList.add('hidden');
+  }
+
+  resetVideoResult() {
+    if (this.videoObjectUrl) {
+      URL.revokeObjectURL(this.videoObjectUrl);
+      this.videoObjectUrl = null;
+    }
+    this.elements.videoResult.classList.add('hidden');
+    this.elements.videoStatus.textContent = '';
+    this.elements.videoEnhanced.textContent = '';
+    this.elements.videoPreview.removeAttribute('src');
+    this.elements.videoPreview.load();
+    this.elements.videoDownload.href = '#';
+    this.elements.videoDownload.classList.add('hidden');
+  }
+
+  setVideoStatus(text) {
+    this.elements.videoStatus.textContent = text;
+  }
+
+  async generateVideo() {
+    const prompt = this.elements.videoPrompt.value.trim();
+    const style = this.elements.videoStyle.value.trim();
+
+    if (!prompt) {
+      this.showToast('Please enter a video prompt', 'error');
+      return;
+    }
+
+    this.elements.videoSubmit.disabled = true;
+    this.elements.videoResult.classList.remove('hidden');
+    this.elements.videoEnhanced.textContent = '';
+    this.elements.videoPreview.removeAttribute('src');
+    this.elements.videoPreview.load();
+    this.elements.videoDownload.classList.add('hidden');
+    this.setVideoStatus('Enhancing prompt with Groq...');
+
+    // Progress indicator since video generation can take 30-120 seconds
+    let dots = 0;
+    const progressInterval = setInterval(() => {
+      dots = (dots + 1) % 4;
+      const dotStr = '.'.repeat(dots);
+      this.setVideoStatus(`Generating video${dotStr} (this can take 1-2 minutes)`);
+    }, 500);
+
+    try {
+      const response = await fetch('/api/video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, style }),
+      });
+
+      clearInterval(progressInterval);
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || err.details || 'Video generation failed');
+      }
+
+      const enhancedHeader = response.headers.get('x-enhanced-prompt');
+      if (enhancedHeader) {
+        const decoded = decodeURIComponent(enhancedHeader);
+        this.elements.videoEnhanced.textContent = `Enhanced prompt: ${decoded}`;
+      } else {
+        this.elements.videoEnhanced.textContent = 'Enhanced prompt unavailable.';
+      }
+
+      this.setVideoStatus('Downloading video...');
+
+      const blob = await response.blob();
+      if (this.videoObjectUrl) {
+        URL.revokeObjectURL(this.videoObjectUrl);
+      }
+      this.videoObjectUrl = URL.createObjectURL(blob);
+      this.elements.videoPreview.src = this.videoObjectUrl;
+      this.elements.videoDownload.href = this.videoObjectUrl;
+      this.elements.videoDownload.classList.remove('hidden');
+      this.setVideoStatus('Video ready.');
+    } catch (error) {
+      clearInterval(progressInterval);
+      this.setVideoStatus(`Error: ${error.message}`);
+      this.showToast(error.message || 'Failed to generate video', 'error');
+    } finally {
+      this.elements.videoSubmit.disabled = false;
     }
   }
 
